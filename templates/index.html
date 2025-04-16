@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Public Bank - Statement Generator</title>
+    <style>
+        :root {
+            --primary-color: #005eb8;
+            --secondary-color: #003366;
+            --accent-color: #ffc107;
+            --light-gray: #f5f5f5;
+            --medium-gray: #e0e0e0;
+            --dark-gray: #333333;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background-color: var(--light-gray);
+            color: var(--dark-gray);
+            line-height: 1.6;
+        }
+        
+        /* Header Styles */
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem 0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: white;
+            text-decoration: none;
+        }
+        
+        .logo span {
+            color: var(--accent-color);
+        }
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+        }
+        
+        nav ul li {
+            margin-left: 1.5rem;
+        }
+        
+        nav ul li a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        
+        nav ul li a:hover {
+            color: var(--accent-color);
+        }
+        
+        /* Main Content Styles */
+        main {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 20px;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        h1 {
+            color: var(--secondary-color);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--medium-gray);
+        }
+        
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            color: var(--secondary-color);
+        }
+        
+        input, select, button {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--medium-gray);
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 5px rgba(0, 94, 184, 0.3);
+        }
+        
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: var(--secondary-color);
+        }
+        
+        .btn-download {
+            background-color: var(--accent-color);
+            color: var(--dark-gray);
+            display: none;
+            margin-top: 1rem;
+        }
+        
+        .btn-download:hover {
+            background-color: #e0a800;
+        }
+        
+        /* Results Section */
+        #results {
+            display: none;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--medium-gray);
+        }
+        
+        /* Alert Messages */
+        .alert {
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        /* Footer Styles */
+        footer {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 2rem 0;
+            margin-top: 3rem;
+        }
+        
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+        
+        .footer-column h3 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: var(--accent-color);
+        }
+        
+        .footer-column ul {
+            list-style: none;
+        }
+        
+        .footer-column ul li {
+            margin-bottom: 0.5rem;
+        }
+        
+        .footer-column ul li a {
+            color: #cccccc;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .footer-column ul li a:hover {
+            color: white;
+        }
+        
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            margin-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9rem;
+            color: #cccccc;
+        }
+        
+        /* Responsive Styles */
+        @media (max-width: 768px) {
+            .header-container {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            nav ul {
+                margin-top: 1rem;
+            }
+            
+            nav ul li {
+                margin: 0 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-container">
+            <a href="#" class="logo">PUBLIC <span>BANK</span></a>
+            <nav>
+                <ul>
+                    <li><a href="#">Home</a></li>
+                    <li><a href="#">Banking</a></li>
+                    <li><a href="#">Credit Cards</a></li>
+                    <li><a href="#">Investments</a></li>
+                    <li><a href="#">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        <div class="container">
+            <h1>Credit Card Statement Generator</h1>
+            <p>Generate your credit card statement by entering your Customer ID and selecting your preferred language.</p>
+            
+            <div id="message-container"></div>
+            
+            <form id="statement-form">
+                <div class="form-group">
+                    <label for="customerId">Customer ID</label>
+                    <input type="text" id="customerId" name="customerId" placeholder="Enter your Customer ID" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="language">Language</label>
+                    <select id="language" name="language">
+                        <option value="en">English</option>
+                        <option value="ta">தமிழ் (Tamil)</option>
+                        <option value="hi">हिंदी (Hindi)</option>
+                        <option value="ar">العربية (Arabic)</option>
+                        <option value="zh">中文 (Chinese)</option>
+                        <option value="fr">Français (French)</option>
+                        <option value="es">Español (Spanish)</option>
+                        <option value="ms">Bahasa Melayu (Malay)</option>
+                        <option value="ja">日本語 (Japanese)</option>
+                        <option value="de">Deutsch (German)</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn" id="generate-btn">Generate Statement</button>
+            </form>
+            
+            <div id="results">
+                <div class="alert alert-success">
+                    Your statement has been successfully generated. Click the button below to download.
+                </div>
+                <button id="download-btn" class="btn btn-download">Download Statement</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-column">
+                <h3>About Us</h3>
+                <ul>
+                    <li><a href="#">Company Profile</a></li>
+                    <li><a href="#">Corporate Responsibility</a></li>
+                    <li><a href="#">Careers</a></li>
+                    <li><a href="#">Investor Relations</a></li>
+                </ul>
+            </div>
+            
+            <div class="footer-column">
+                <h3>Banking Services</h3>
+                <ul>
+                    <li><a href="#">Personal Banking</a></li>
+                    <li><a href="#">Business Banking</a></li>
+                    <li><a href="#">Islamic Banking</a></li>
+                    <li><a href="#">International Banking</a></li>
+                </ul>
+            </div>
+            
+            <div class="footer-column">
+                <h3>Support</h3>
+                <ul>
+                    <li><a href="#">Contact Us</a></li>
+                    <li><a href="#">FAQs</a></li>
+                    <li><a href="#">Branch/ATM Locator</a></li>
+                    <li><a href="#">Security & Privacy</a></li>
+                </ul>
+            </div>
+            
+            <div class="footer-column">
+                <h3>Connect With Us</h3>
+                <ul>
+                    <li><a href="#">Facebook</a></li>
+                    <li><a href="#">Twitter</a></li>
+                    <li><a href="#">LinkedIn</a></li>
+                    <li><a href="#">YouTube</a></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <p>&copy; 2025 Public Bank Berhad (6463-H). All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('statement-form');
+            const results = document.getElementById('results');
+            const downloadBtn = document.getElementById('download-btn');
+            const messageContainer = document.getElementById('message-container');
+            
+            let currentFilename = '';
+            
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Show loading message
+                messageContainer.innerHTML = `
+                    <div class="alert alert-success">
+                        Processing your request. Please wait...
+                    </div>
+                `;
+                
+                // Get form data
+                const customerId = document.getElementById('customerId').value;
+                const language = document.getElementById('language').value;
+                
+                // Send data to backend
+                fetch('/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        customerId: customerId,
+                        language: language
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.error || 'Failed to generate statement');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Store the filename for download
+                        currentFilename = data.filename;
+                        
+                        // Show success message and download button
+                        messageContainer.innerHTML = '';
+                        results.style.display = 'block';
+                        downloadBtn.style.display = 'block';
+                    } else {
+                        throw new Error(data.error || 'Failed to generate statement');
+                    }
+                })
+                .catch(error => {
+                    // Show error message
+                    messageContainer.innerHTML = `
+                        <div class="alert alert-error">
+                            Error: ${error.message}
+                        </div>
+                    `;
+                    results.style.display = 'none';
+                });
+            });
+            
+            // Download button handler
+            downloadBtn.addEventListener('click', function() {
+                if (currentFilename) {
+                    window.location.href = `/download/${currentFilename}`;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
