@@ -1,7 +1,7 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory, redirect, url_for
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from weasyprint import HTML
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import pymysql
 
 app = Flask(__name__)
@@ -325,19 +325,21 @@ def generate_pdf(customer, account, transactions, rewards, language='en'):
 
     today = datetime.now().strftime('%d %B %Y')
 
-    # Transaction rows
+
+    # Transaction rows with +/- notation
     tx_rows = ""
     for txn in transactions:
+        amount_prefix = "-" if txn['TransactionType'].lower() in ['payment', 'refund'] else "+"
         tx_rows += f"""
         <tr>
-            <td>{txn['TransactionDate']}</td>
+            <td>{txn['TransactionDate'].strftime('%Y-%m-%d')}</td>   <!-- Remove timestamp -->
             <td>{txn['MerchantName']}</td>
-            <td style='text-align:right'>RM {txn['Amount']:.2f}</td>
+            <td style='text-align:right'>{amount_prefix}RM {txn['Amount']:.2f}</td>
             <td>{txn['TransactionType']}</td>
         </tr>
         """
 
-    # HTML content
+    # HTML content with PBB styling
     html_string = f"""
     <html>
     <head>
@@ -345,105 +347,189 @@ def generate_pdf(customer, account, transactions, rewards, language='en'):
         <style>
             @page {{
                 size: A4;
-                margin: 40px;
+                margin: 20mm;
                 @bottom-center {{
-                    content: "Public Bank Berhad (6463-H) | www.pbebank.com | Customer Care: 1-800-22-5555 | Email: customerservice@publicbank.com.my\\A {t['footer']}";
-                    font-size: 10px;
-                    color: #666;
+                    content: "Public Bank Berhad (6463-H) | Laman Web: www.pbebank.com | Perkhidmatan Pelanggan: 03-2176 8000";
+                    font-size: 8pt;
+                    color: #666666;
                     white-space: pre;
                 }}
             }}
             body {{
                 font-family: 'Arial', sans-serif;
                 direction: {text_direction};
-                text-align: {text_align};
-                color: #333;
-                font-size: 12px;
+                color: #333333;
+                font-size: 10pt;
+                line-height: 1.4;
                 margin: 0;
+                padding: 0;
             }}
+            /* ===== PBB Branding ===== */
             .header {{
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border-bottom: 2px solid #ccc;
+                border-bottom: 2px solid #003366;
                 padding-bottom: 10px;
+                margin-bottom: 15px;
             }}
-            .header h1 {{ color: #007bff; }}
-            .header .title {{ font-size: 15px; font-weight: bold; color: #007bff; }}
-            .section-title {{
-                background-color: #f1f1f1;
-                padding: 8px;
+            .pbb-logo {{
+                height: 45px;
+                width: auto;
+                margin-{'right' if is_rtl else 'left'}: 15px;
+            }}
+            .statement-title {{
+                color: #003366;
+                font-size: 18pt;
                 font-weight: bold;
-                font-size: 14px;
-                border-left: 5px solid #007bff;
-                margin-top: 30px;
+                text-align: center;
+                margin: 20px 0;
+                text-transform: uppercase;
             }}
-            .info p {{ margin: 4px 0; }}
+            /* ===== Section Styles ===== */
+            .section-title {{
+                background-color: #003366;
+                color: white;
+                padding: 8px 12px;
+                font-weight: bold;
+                font-size: 12pt;
+                margin: 25px 0 10px 0;
+                border-radius: 4px;
+            }}
+            .highlight-box {{
+                background-color: #f1f7ff;
+                border: 1px solid #003366;
+                border-radius: 6px;
+                padding: 15px;
+                margin: 20px 0;
+            }}
+            /* ===== Table Styles ===== */
             table {{
                 width: 100%;
                 border-collapse: collapse;
-                margin-top: 10px;
+                margin: 12px 0 20px 0;
+                font-size: 9.5pt;
             }}
-            th, td {{ border: 1px solid #ddd; padding: 6px; }}
-            th {{ background-color: #007bff; color: white; text-align: {text_align}; }}
+            th {{
+                background-color: #003366;
+                color: white;
+                padding: 10px;
+                text-align: left;
+                font-weight: bold;
+            }}
+            td {{
+                padding: 8px 10px;
+                border-bottom: 1px solid #e0e0e0;
+            }}
+            tr:nth-child(even) {{
+                background-color: #f8f9fa;
+            }}
+            .total-row {{
+                font-weight: bold;
+                background-color: #e6efff;
+            }}
+            /* ===== Utility Classes ===== */
+            .text-right {{ text-align: right; }}
+            .currency {{ font-family: 'Courier New', monospace; }}
         </style>
     </head>
     <body>
 
         <div class='header'>
-            <h1>PUBLIC BANK</h1>
-            <div class='title'>{t['title']}</div>
+            <img src="templates/public_bank_logo.png" class='pbb-logo' alt='Public Bank Logo'>
         </div>
 
-        <div class='info'>
-            <div class='section-title'>{t['summary']}</div>
-            <p><strong>{t['customer_name']}:</strong> {customer['FirstName']} {customer['LastName']}</p>
-            <p><strong>{t['card_number']}:</strong> {account['CardNumber']} ({account['CardType']})</p>
-            <p><strong>{t['statement_date']}:</strong> {today}</p>
-            <p><strong>{t['current_balance']}:</strong> RM {account['CurrentBalance']:.2f}</p>
+        <!-- Account Summary Section -->
+        <div class='section-title'>{t['summary'].upper()}</div>
+        <div class='info-box'>
+            <table>
+                <tr>
+                    <td width='30%'><strong>{t['customer_name']}</strong></td>
+                    <td>{customer['FirstName']} {customer['LastName']}</td>
+                    <td><strong>{t['credit_limit']}</strong></td>
+                    <td class='text-right'>RM {account.get('CreditLimit', '0.00')}</td>
+                </tr>
+                <tr>
+                    <td><strong>{t['card_number']}</strong></td>
+                    <td>xxxx xxxx xxxx {account['CardNumber'][-4:]} ({account['CardType']})</td>
+                    <td><strong>{t['available_credit']}</strong></td>
+                    <td class='text-right'>RM {account.get('AvailableCredit', '0.00')}</td>
+                </tr>
+                <tr>
+                    <td><strong>{t['statement_date']}</strong></td>
+                    <td>{today}</td>
+                    <td><strong>{t['current_balance']}</strong></td>
+                    <td class='text-right'>RM {account['CurrentBalance']:.2f}</td>
+                </tr>
+            </table>
         </div>
 
-        <div class='section-title'>{t['payment']}</div>
-        <table>
-            <tr><td><strong>{t['previous_balance']}:</strong></td><td>RM {account.get('PreviousBalance', '0.00')}</td></tr>
-            <tr><td><strong>{t['payments_made']}:</strong></td><td>RM {account.get('TotalPayment', '0.00')}</td></tr>
-            <tr><td><strong>{t['new_purchases']}:</strong></td><td>RM {account.get('NewPurchases', '0.00')}</td></tr>
-            <tr><td><strong>{t['interest_charges']}:</strong></td><td>RM {account.get('Interest', '0.00')}</td></tr>
-            <tr><td><strong>{t['min_due']}:</strong></td><td>RM {account.get('MinDue', '0.00')}</td></tr>
-            <tr><td><strong>{t['total_due']}:</strong></td><td>RM {account.get('TotalDue', '0.00')}</td></tr>
-            <tr><td><strong>{t['due_date']}:</strong></td><td>{account.get('DueDate', 'N/A')}</td></tr>
-        </table>
+        <!-- Payment Summary Section -->
+        <div class='section-title'>{t['payment'].upper()}</div>
+        <div class='highlight-box'>
+            <table>
+                <tr>
+                    <td width='70%'><strong>{t['previous_balance']}</strong></td>
+                    <td class='text-right'>RM {account.get('PreviousBalance', '0.00')}</td>
+                </tr>
+                <tr>
+                    <td><strong>{t['payments_made']}</strong></td>
+                    <td class='text-right'>-RM {account.get('TotalPayment', '0.00')}</td>
+                </tr>
+                <tr>
+                    <td><strong>{t['new_purchases']}</strong></td>
+                    <td class='text-right'>+RM {account.get('NewPurchases', '0.00')}</td>
+                </tr>
+                <tr class='total-row'>
+                    <td><strong>{t['total_due']}</strong></td>
+                    <td class='text-right'>RM {account.get('TotalDue', '0.00')}</td>
+                </tr>
+                <tr>
+                    <td><strong>{t['due_date']}</strong></td>
+                    <td class='text-right'>{(datetime.now()+timedelta(account.get('PaymentDueDate', '10'))).strftime('%d %B %Y')}</td>
+                </tr>
+            </table>
+        </div>
 
-        <div class='section-title'>{t['credit_usage']}</div>
-        <table>
-            <tr><td><strong>{t['credit_limit']}:</strong></td><td>RM {account.get('CreditLimit', '0.00')}</td></tr>
-            <tr><td><strong>{t['available_credit']}:</strong></td><td>RM {account.get('AvailableCredit', '0.00')}</td></tr>
-            <tr><td><strong>{t['cash_limit']}:</strong></td><td>RM {account.get('CashLimit', '0.00')}</td></tr>
-            <tr><td><strong>{t['available_cash']}:</strong></td><td>RM {account.get('AvailableCash', '0.00')}</td></tr>
-        </table>
-
-        <div class='section-title'>{t['transactions']}</div>
+        <!-- Transaction Section -->
+        <div class='section-title'>{t['transactions'].upper()}</div>
         <table>
             <thead>
                 <tr>
-                    <th>{t['date']}</th>
+                    <th width='15%'>{t['date']}</th>
                     <th>{t['merchant']}</th>
-                    <th>{t['amount']}</th>
-                    <th>{t['type']}</th>
+                    <th width='20%' class='text-right'>{t['amount']}</th>
+                    <th width='20%'>{t['type']}</th>
                 </tr>
             </thead>
             <tbody>
                 {tx_rows}
             </tbody>
         </table>
+
+        <!-- Rewards Section -->
+    """+ (f"""
+            <div class='section-title'>PB REWARD POINTS</div>
+            <div class='highlight-box'>
+                <table>
+                    <tr>
+                        <td width='70%'><strong>Total Points Earned</strong></td>
+                        <td class='text-right'>{rewards['PointsEarned']}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Points Expiring Next Month</strong></td>
+                        <td class='text-right'>0</td>
+                    </tr>
+                </table>
+            </div>
+        """ if rewards else "") + """
+
+         <!-- Security Footer -->
+        <div style='margin-top:30px; font-size:8pt; color:#666; text-align:center'>
+            LATE PAYMENT FEE: 1% OF OUTSTANDING BALANCE (MIN RM10) | SERVICE TAX: RM25 PER ANNUM
+        </div>
+
+    </body>
+    </html>
     """
-
-    if rewards:
-        html_string += f"""
-        <div class='section-title'>{t['rewards']}</div>
-        <p><strong>{t['available_points']}:</strong> {rewards['PointsEarned']}</p>
-        """
-
+    # ... [keep remaining PDF generation logic] ...
     html_string += "</body></html>"
 
     # Create file path for saving the PDF
